@@ -1,0 +1,141 @@
+import * as sklearn from "sklearn";
+// import SpotifyWebApi from "spotify-web-api-js";
+import SpotifyWebApi from 'spotify-web-api-node';
+import axios from 'axios';
+
+async function getSeveralTracksAudioFeatures(trackIds, token) {
+  try {
+    const response = await axios.get(`https://api.spotify.com/v1/audio-features/?ids=${trackIds.join(',')}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (response.status === 200) {
+      return response.data.audio_features;
+    } else {
+      console.error(`Failed to fetch audio features: ${response.statusText}`);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching audio features:', error);
+    return null;
+  }
+}
+
+
+
+
+async function fetchSongs(songs, token) {
+
+  let songData = await getSeveralTracksAudioFeatures(songs,token);
+
+  // console.log(songData[0]);
+
+  let X = [];
+
+  for(let i in songData){
+    let temp = []
+
+    temp.push(songData[i].danceability);
+    temp.push(songData[i].energy);
+    temp.push(songData[i].key);
+    temp.push(songData[i].loudness);
+    temp.push(songData[i].mode);
+    temp.push(songData[i].speechiness);
+    temp.push(songData[i].acousticness);
+    temp.push(songData[i].instrumentalness);
+    temp.push(songData[i].liveness);
+    temp.push(songData[i].valence);
+    temp.push(songData[i].tempo);
+    temp.push(songData[i].loudness);
+
+    X.push(temp);
+  }
+
+  return X;
+
+
+}
+
+async function analyseSongs(data_body) {
+  const song_data = await fetchSongs(data_body["songs"], data_body["token"]);
+
+  const data = [
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 9],
+    [10, 11, 12],
+    [13, 14, 15],
+  ];
+
+  const py = await sklearn.createPythonBridge({
+    python: "python",
+  });
+
+  const model = new sklearn.TSNE({
+    perplexity: 30,
+  });
+
+  await model.init(py);
+
+  const x = await model.fit_transform({ X: song_data });
+
+  const spot = new SpotifyWebApi();
+  spot.setAccessToken(data_body['token']);
+
+
+  let post_processed = []
+  var xMin = Number.MAX_VALUE, xMax = Number.MIN_VALUE, yMin = Number.MAX_VALUE, yMax = Number.MIN_VALUE;
+
+  for(let i in x){
+    let temp = {}
+    await data_body['songs'][i]
+    const response  = await spot.getTrack(data_body['songs'][i]);
+    if (response.statusCode === 200){
+      temp = response.body
+      const albumResponse = await spot.getAlbum(temp.album.id)
+      if(albumResponse.statusCode === 200) {
+        temp['genres'] = albumResponse.body['genres']
+      }
+      else {
+        temp['genres'] = null
+      }
+
+      const artistResponse = await spot.getArtist(temp['artists'][0]['id'])
+
+      if(artistResponse.statusCode===200){
+        temp['artist_genres'] = artistResponse.body['genres']
+      }
+      else {
+        temp['artist_genres'] = null
+      }
+      temp['xy'] = x[i]
+      if(x[i][0] > xMax) xMax = x[i][0];
+      if(x[i][0] < xMin) xMin = x[i][0];
+      if(x[i][1] > yMax ) yMax = x[i][1];
+      if(x[i][1] < yMin ) yMin = x[i][1];
+      post_processed.push(temp);
+    }
+    else {
+      post_processed.push(null);
+    }
+  }
+
+  console.log('xMax : ', xMax);
+  console.log('xMin : ', xMin);
+  console.log('yMax : ', yMax);
+  console.log('yMin : ', yMin);
+
+  let temp_json = {}
+  temp_json['xMax'] = xMax
+  temp_json['xMin'] = xMin
+  temp_json['yMax'] = yMax
+  temp_json['yMin'] = yMin
+  temp_json['items'] = post_processed
+  return temp_json;
+}
+
+export default {
+  analyseSongs,
+};

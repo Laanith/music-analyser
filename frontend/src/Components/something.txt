@@ -1,0 +1,208 @@
+import * as d3 from "d3";
+import { useEffect, useRef, useState } from "react";
+import { layoutTextLabel, layoutRemoveOverlaps } from "@d3fc/d3fc-label-layout";
+import utils from "../utilities/utilities";
+import { layoutAnnealing, layoutGreedy, layoutLabel } from "d3fc";
+
+function DeeThreeNames({ result , spot}) {
+  const svgRef = useRef(null);
+  const [songData, setSongData] = useState(null);
+  const [bgColor , setBgColor ] = useState(null);
+
+
+  
+
+
+  useEffect(() => {
+    function generateRandomColor() {
+      const red = Math.floor(Math.random() * 256);
+      const green = Math.floor(Math.random() * 256);
+      const blue = Math.floor(Math.random() * 256);
+      return `rgb(${red}, ${green}, ${blue})`;
+    }
+
+    if (svgRef.current) {
+      const svg = d3.select(svgRef.current);
+      
+      // Get viewport dimensions
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const marginX = 150;
+      const marginY= 150;
+
+
+      const x = d3.scaleLinear([result.xMin, result.xMax], [marginX, viewportWidth-marginX]);
+      const y = d3.scaleLinear([result.yMin, result.yMax], [marginY, viewportHeight-marginY]);
+
+
+      // Set the SVG dimensions
+      svg.attr("width", viewportWidth)
+         .attr("height", viewportHeight);
+
+      // const nodes = svg.selectAll("text")
+      //   .data(result.items)
+      //   .join("text")
+      //   .attr("x", d => x(d.xy[0]))
+      //   .attr("y", d => y(d.xy[1]))
+      //   .text(d => d.name)
+      //   .style("fill", () => generateRandomColor())
+      //   .style("font-size", d => `${Math.sqrt(d.popularity) + 10}px`)
+      //   .on("mouseenter", (event, d) => {
+      //     // handle mouseenter
+      //   })
+      //   .on("mouseleave", () => {
+      //     // handle mouseleave
+      //   });
+
+      const labelPadding = 2;
+      const textLabel = layoutTextLabel().padding(labelPadding).value((d)=>{
+        // console.log("TEXT LABEL :", d);
+        return d.name;
+      })
+  
+
+
+      const strategy = layoutRemoveOverlaps(layoutGreedy());
+
+      const labels = layoutLabel(strategy)
+      .size((d, i, g) => {
+        const tempText = svg.append("text")
+          .style("font-size", `${Math.sqrt(d.popularity) + 10}px`)
+          .text(d.name);
+
+        const textSize = tempText.node().getBBox();
+        tempText.remove();
+
+        return [textSize.width + labelPadding * 2, textSize.height + labelPadding * 2];
+      })
+      .position(d=>{
+        return [x(d['xy'][0]), y(d['xy'][1])]
+      })
+      .component(textLabel);
+
+      // console.log(nodes);
+
+
+      svg.datum(result.items).call(labels);
+
+
+      svg.selectAll("text")
+      .style("fill", () => generateRandomColor())
+      .style("font-size", d => `${Math.sqrt(d.popularity) + 5}px`)
+      .style("background", "transparent")
+      .on("mouseenter", (event, d) => {
+        setSongData(d);
+        const fill = d3.select(event.target).style("fill");
+        setBgColor(fill);
+      })
+      .on("mouseleave", () => {
+        // handle mouseleave
+      });
+
+      // .style("background-fill", "transparent");
+
+
+
+    }
+  }, [result]);
+
+  return (
+    <div className="overflow-x-auto">
+      {result ? (
+        <svg className="bg-gray-900" ref={svgRef}></svg>
+      ) : (
+        <div className="text-red-300">Something is wrong</div>
+      )}
+      {
+        songData ? <HoverRenderer data={songData} bgColor={bgColor} spot={spot} /> : <></>
+      }
+    </div>
+  );
+}
+
+export default DeeThreeNames;
+
+
+function HoverRenderer({ data, bgColor , spot }) {
+
+  const [recommendations, setRecommendations ] = useState(null);
+  useEffect(()=>{
+
+    const options = {
+      seed_tracks : [data.id],
+      seed_artists : data.artists.map(artist => artist.id),
+      seed_genres : (data.genres.length != 0 ? data.genres : data.artist_genres[0]),
+      limit : 4
+    }
+
+    console.log(options);
+
+    spot.getRecommendations(options).then(
+      function (data){
+        console.log(data);
+        setRecommendations(data.tracks);
+      }, 
+      function (err){
+        console.error(err);
+      }
+    );
+
+
+  }, [spot, data])
+
+
+
+
+
+
+  return(  <div className="flex flex-row">
+    <div className="absolute bottom-0 left-0 w-[400px] h-[250px] z-50 m-[40px] flex flex-col">
+      <div className="bg-white h-full rounded-t-3xl p-[20px] flex flex-row">
+        {
+            <div className="flex flex-col px-8 bg-blue-100 h-fit mb-auto">
+            <span className="text-xl font-bold" >{data.name}</span>
+          <span><span className="spotify-bold">Album :</span>{" " + data.album.name}</span>
+          <span><span className="spotify-bold">Artists :</span>{" " + utils.combineArtists(data.artists)}</span>
+          <span><span className="spotify-bold">Genres :</span>{" " + (data.genres.length === 0 ? utils.combineWords(data.artist_genres) : utils.combineWords(data.genres))}</span>
+  
+          </div>
+        }
+        {
+          <img alt="something" src={data.album.images[0].url} className=" w-[100px] h-[100px] aspect-square ml-auto border-4 border-gray-400 rounded-md"></img>
+        }
+      </div>
+      <div className="mt-auto h-[60px] border-t-black border-t-2 p-[10px] rounded-b-3xl" style={{background : bgColor}}>
+        <span className="text-transparent">Bye</span>
+      </div>
+    </div>
+        <div>  
+    {
+      recommendations ? <div className="flex flex-row justify-around w-auto] bg-green-400 m-[40px] absolute bottom-0 left-[450px] z-[10000]">
+        {recommendations.map(track=> <TrackRecommendation track={track} />)}
+      </div> : <div>No Recommendations Fetched</div>
+    }</div>
+    </div>)
+  
+  
+  
+  ;
+}
+
+
+function TrackRecommendation({track}){
+
+  useEffect(()=>{
+    console.log(track);
+  })
+
+  return(
+    <div className="h-[250px] w-[180px] bg-white m-[10px] my-0 flex flex-col text-center rounded-[10px]">
+      <div className="my-auto flex flex-col"><span className="spotify-bold">{track.name}</span>
+      <span className="text-gray-600">{utils.combineArtists(track.artists)}</span>
+      <img alt="album-preview" className="aspect-square w-[100px] h-[100px] border-4 border-gray-500 my-auto mx-auto rounded-xl" src={track.album.images[0].url}></img>
+      <span className="text-gray-600"><strong>Popularity :</strong>{" " + track.popularity}</span>
+      <span className="text-gray-600"><strong>Duration :</strong>{" " + utils.convertMillisecondsToMinutesAndSeconds(track.duration_ms)}</span>
+      </div>
+    </div>
+  )
+}

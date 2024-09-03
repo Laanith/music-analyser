@@ -1,0 +1,174 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+@font-face {
+  font-family: 'Spotify-regular';
+  src: url('./assets/fonts/CircularSpotify-UI-Latin-OS2v3-Book.woff2');
+}
+
+@font-face {
+  font-family: 'Spotify-bold';
+  src: url("./assets/fonts/CircularSpotify-UI-Latin-OS2v3-Bold.woff2");
+}
+
+@font-face {
+  font-family: 'Spotify-black';
+  src: url('./assets/fonts/CircularSpotify-UI-Latin-OS2v3-Black.woff2');
+}
+
+
+html {
+  overflow-x: hidden;
+}
+
+html::-webkit-scrollbar {
+    background-color: inherit;
+    width: 5px;
+}
+
+html::-webkit-scrollbar-thumb {
+  background-color: rgba(131, 129, 129, 0.473);
+    border-radius: 2.5px;
+}
+
+
+
+*::-webkit-scrollbar {
+    background-color: inherit;
+    width: 5px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(131, 129, 129, 0.473);
+    border-radius: 2.5px;
+}
+
+
+
+
+body {
+  margin: 0;
+  font-family: 'Spotify-regular';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+
+.spotify-bold {
+  font-family: 'Spotify-bold';
+  letter-spacing: 0.3px;
+}
+
+p.dotted-underline {
+  text-decoration: underline dotted black 0.5px;
+  text-underline-offset: 3px;
+
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+div#user-details span {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+div#user-details span dt {
+  font-weight: bold;
+  margin-right: 30px;
+  width : 150px;
+}
+
+audio.audio {
+  display: none;
+}
+
+
+#top-artist-container::-webkit-scrollbar {
+  background-color: inherit;
+  height: 5px;
+}
+
+#top-artist-container::-webkit-scrollbar-thumb {
+  background-color : rgba(131, 129, 129, 0.473);
+  border-radius: 2.5px;
+}
+
+.non-transition-class {
+  transform: scale(0);
+  transition: all 0.1ms;
+  width: 0; 
+  max-width: 0;
+   min-width: 0;
+  height: 0;
+}
+
+
+.transition-class {
+  transform: scale(1);
+  transition: all 0.5s;
+  width: max-content;
+}
+
+
+#spinner {
+animation: spin 1s infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotateZ(0deg);
+  }
+
+  100% {
+    transform: rotateZ(360deg);
+  }
+}
+
+g.label {
+  fill: none;
+}
+
+/* svg#scatterCanvas {
+  overflow-x : scroll;
+}
+
+svg#scatterCanvas::-webkit-scrollbar {
+  position: absolute;
+} */
+
+
+.dont-show {
+  background: rgba(163, 64, 64, 0.473);
+  display:  none;
+  flex-direction: row;
+  position: relative;
+  bottom: 330px;
+  left : 100px;
+  margin :40px;
+  z-index: 0;
+  transition : left 0.2s;
+}
+
+
+.show {
+  background: transparent;
+  display:  flex;
+  flex-direction: row;
+  position: fixed;
+  bottom: 0;
+  left : 450px;
+  margin :40px 0 40px 0;
+  transition: left 0.2s;
+}
+
+.dont-show-card {
+  position: fixed;
+  left : 0px;
+  top : 0px;
+}

@@ -1,0 +1,78 @@
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { Save } from "@mui/icons-material";
+
+export default function Visualizer({ authToken }) {
+  const [SavedTracks, setSavedTracks] = useState([]);
+
+  const fetchData = async (url) => {
+    try {
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+
+      const newData = response.data.items;
+       setSavedTracks((prevData) => [...prevData, ...newData]);
+      
+
+      if (response.data.next) {
+        await fetchData(response.data.next);
+      }
+      
+
+    } catch (error) {
+      console.error("ERROR IN FETCHING SAVED TRACKS :", error);
+    }
+  };
+
+
+  const sendData =  () => {
+    if (SavedTracks.length != 0) {
+          try {
+            axios.post("http://localhost:8000", { SavedTracks }).then((res) => {
+              console.log(res.data);
+            });
+          } catch (err) {
+            console.error("error in sending data to server", err);
+          }
+    }
+  }
+
+  useEffect( () => {
+    const url = "https://api.spotify.com/v1/me/tracks?market=IN&limit=50";
+    fetchData(url);
+
+    setTimeout(() => {
+      sendData();
+    }, 1000)
+
+    
+  }, []);
+
+
+
+  return (
+    <div>
+      Visualizer
+      <div className="flex flex-row flex-wrap">
+        {SavedTracks.length === 0 ? (
+          <></>
+        ) : (
+          SavedTracks.map((item) => {
+            return (
+              <div className="">
+                <img
+                  className="w-[100px]"
+                  alt="songpic"
+                  src={item.track.album.images[1].url}
+                ></img>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}

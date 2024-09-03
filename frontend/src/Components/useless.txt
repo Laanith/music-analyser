@@ -1,0 +1,91 @@
+import { useEffect, useState } from "react";
+import axios from "axios";
+import DeethreeNames from "../Components/deethree";
+import Deethree from "../Components/deethreenames";
+import Loader from "../Components/LoadingComponent";
+
+export default function Visualizer({ spot, authToken }) {
+  const [SavedTracks, setSavedTracks] = useState([]);
+  const [dataSent, setDataSent] = useState(false);
+  const [_session, setSession] = useState(null);
+  const [result, setResult] = useState(null);
+  const [token, setToken] = useState(null);
+
+  const sessionGenerator = () => {
+    var chars =
+      "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    var length = 10;
+    var randomString = "";
+
+    for (var i = 0; i < length; i++) {
+      var randomIndex = Math.floor(Math.random() * chars.length);
+      randomString += chars[randomIndex];
+    }
+
+    return randomString;
+  };
+
+  useEffect(() => {
+    const session = sessionGenerator();
+    setSession(session);
+
+
+    function sendDataToServer(songs, session, endRequest, token) {
+      let data = {};
+      let song_ids = [];
+      for (let item in songs) {
+        song_ids.push(songs[item].track.id);
+      }
+      data["songs"] = song_ids;
+      // console.log('SONGS',songs);
+      // console.log('SONGIDS',song_ids);
+      data["session"] = session;
+      data["endRequest"] = endRequest;
+      data["token"] = token;
+
+      axios
+        .post("http://localhost:8000", data)
+        .then((res) => {
+          console.log("response from server", res.data);
+          setResult(res.data);
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+    }
+
+    function fetchAndSendData(index = 0) {
+      spot.getMySavedTracks(
+        {
+          offset: index * 50,
+          limit: 50,
+        },
+        (err, res) => {
+          if (err) console.log(err);
+          else {
+            if (res.next) {
+              sendDataToServer(
+                res.items,
+                session || _session,
+                false,
+                authToken
+              );
+            } else {
+              sendDataToServer(res.items, session || _session, true, authToken);
+            }
+          }
+        }
+      );
+    }
+
+    fetchAndSendData();
+  }, []);
+
+  return (
+    <div>
+      <div className="">
+        {result ? <DeethreeNames result={result} spot={spot} />  :  <Loader/>}
+      </div>
+    </div>
+  );
+}
